@@ -142,6 +142,7 @@ Chronos_Log/
 ├── flood.py             # Controlled UDP traffic generator for congestion
 ├── setup_qos.sh         # Open vSwitch HTB queue configuration script
 ├── analyze_results.py   # Performance comparison and reporting tool
+├── test_suite.py        # Automated unit and integration test suite
 ├── run_experiment.sh    # Test automation script
 ├── LICENSE              # Open source MIT license
 └── README.md            # Technical documentation
@@ -234,6 +235,21 @@ To verify the socket programming components without Mininet:
 ./run_experiment.sh standalone
 ```
 This spawns the centralized server and three concurrent log clients on localhost, tests sequence delivery and categorization, and generates logs in `results/standalone/`.
+
+### Automated Verification Test Suite
+
+To run the complete automated unit and integration test suite:
+```bash
+python3 test_suite.py
+```
+This executes 9 end-to-end tests covering:
+- RFC DSCP/TOS bitwise operations and conversions.
+- Payload serialization, schema validation, and malformed packet rejection.
+- Live multi-threaded UDP socket communication across all 5 severity levels.
+- Sequence gap detection for accurate packet drop accounting.
+- Delivery latency calculations.
+- UDP traffic flooder bandwidth pacing and packet transmission.
+- Comparative report generation and CSV export.
 
 ---
 
