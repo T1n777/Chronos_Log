@@ -363,10 +363,10 @@ def phase_4_sdn_qos(auto: bool):
 
 
 # =============================================================================
-# PHASE 5: Evaluation Matrix & Viva Defense Preparation
+# PHASE 5: Performance Evaluation & Quantitative Comparison
 # =============================================================================
-def phase_5_evaluation_and_viva(auto: bool):
-    print_header("Evaluation Matrix & Viva Defense Summary", "Phase 5")
+def phase_5_evaluation(auto: bool):
+    print_header("Performance Evaluation & Quantitative Comparison", "Phase 5")
     print(f"""
 {Colors.BOLD}Comprehensive Performance Evaluation Matrix (1.0 Mbps link, 5.0 Mbps Flood):{Colors.RESET}
 
@@ -380,31 +380,23 @@ def phase_5_evaluation_and_viva(auto: bool):
  CRITICAL   |          42.2%  |        1.1%  |           34.60ms |        8.40ms | Queue 1 (Guaranteed 800k-1M)
 ======================================================================================
 
-{Colors.BOLD}Key Viva Defense Answers for Evaluators:{Colors.RESET}
+{Colors.BOLD}Key Architectural Findings:{Colors.RESET}
 
-1. {Colors.BOLD}Q: Why use UDP instead of TCP for log collection?{Colors.RESET}
-   A: UDP provides minimal overhead, zero connection state, and prevents TCP head-of-line
-      blocking. In distributed systems, logging must never block primary application threads.
+  1. {Colors.BOLD}Indiscriminate Dropping in Baseline:{Colors.RESET}
+     Without SDN prioritization, standard FIFO buffers drop all traffic uniformly (~42% loss).
+     Critical alarms are dropped at the same rate as routine debug logs.
 
-2. {Colors.BOLD}Q: How does the network know which packets are critical?{Colors.RESET}
-   A: The client marks the IPv4 header's Type of Service (TOS) octet. The top 6 bits
-      represent Differentiated Services Code Point (DSCP). CRITICAL is tagged as Expedited
-      Forwarding (DSCP 46, TOS 0xB8), while ERROR is tagged as AF41 (DSCP 34, TOS 0x88).
+  2. {Colors.BOLD}Telemetry Protection with SDN QoS:{Colors.RESET}
+     With DiffServ OpenFlow rules, CRITICAL log loss drops from 42.2% down to 1.1%,
+     and ERROR log loss drops to 4.4%.
 
-3. {Colors.BOLD}Q: How does the SDN Controller detect congestion?{Colors.RESET}
-   A: The Ryu controller periodically issues OFPFlowStatsRequest messages. By computing the
-      rate of byte count changes over time on the bottleneck switch (s2), it calculates link
-      throughput and flags congestion when utilization exceeds 650 Kbps.
+  3. {Colors.BOLD}Latency Reduction Under Contention:{Colors.RESET}
+     Delivery latency for CRITICAL logs decreases from 34.6ms to 8.4ms (>75% improvement)
+     because priority queue packets bypass the queue backlog of background traffic.
 
-4. {Colors.BOLD}Q: What mechanism enforces prioritization on the OpenFlow switch?{Colors.RESET}
-   A: Open vSwitch (OVS) is configured with Hierarchical Token Bucket (linux-htb) queues.
-      The controller installs flow rules with OFPActionSetQueue(queue_id=1) for critical DSCPs,
-      guaranteeing 80% to 100% of link bandwidth even during flood traffic.
-
-5. {Colors.BOLD}Q: How are packet losses and latency measured?{Colors.RESET}
-   A: Each packet embeds a per-host sequence number (seq) and high-resolution send timestamp.
-      The server detects missing sequence intervals as dropped packets and computes one-way
-      transit latency as (receive_time - send_time) * 1000 ms.
+  4. {Colors.BOLD}Controlled Selective Degradation:{Colors.RESET}
+     Lower-priority logs (DEBUG, INFO) absorb link congestion in Queue 0,
+     achieving the primary architectural objective of graceful degradation during emergencies.
 """)
     print("=" * 80)
     print(f" {Colors.GREEN}{Colors.BOLD}Demonstration Concluded Successfully.{Colors.RESET}")
@@ -432,7 +424,7 @@ def main():
     phase_2_live_sockets(args.auto)
     phase_3_congestion_baseline(args.auto)
     phase_4_sdn_qos(args.auto)
-    phase_5_evaluation_and_viva(args.auto)
+    phase_5_evaluation(args.auto)
 
 
 if __name__ == "__main__":

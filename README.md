@@ -256,7 +256,7 @@ Demonstration Phases:
 2. Live Socket Telemetry: Spins up live UDP sockets and streams concurrent client logs with real-time latency measurement and categorization.
 3. Baseline Congestion: Simulates link saturation and demonstrates uniform packet drops where critical alerts are lost.
 4. SDN Prioritization: Demonstrates Ryu telemetry detection, OpenFlow 1.3 DSCP flow rule installation, and priority queue delivery with 0% critical loss.
-5. Evaluation & Viva Summary: Displays the side-by-side performance matrix and reviews defense questions.
+5. Evaluation & Key Findings: Displays the comparative performance matrix and summarizes architectural findings.
 
 ### Automated Verification Test Suite
 
