@@ -1,0 +1,17 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Test and runtime outputs
+results/standalone/
+results/baseline/
+results/qos/
+comparison_report.txt
+comparison_report.csv
+
+# Mininet and system logs
+*.log
+*.pid
