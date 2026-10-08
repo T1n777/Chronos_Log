@@ -143,6 +143,7 @@ Chronos_Log/
 ├── setup_qos.sh         # Open vSwitch HTB queue configuration script
 ├── analyze_results.py   # Performance comparison and reporting tool
 ├── test_suite.py        # Automated unit and integration test suite
+├── demo.py              # Interactive terminal showcase for evaluation and viva
 ├── run_experiment.sh    # Test automation script
 ├── LICENSE              # Open source MIT license
 └── README.md            # Technical documentation
@@ -235,6 +236,27 @@ To verify the socket programming components without Mininet:
 ./run_experiment.sh standalone
 ```
 This spawns the centralized server and three concurrent log clients on localhost, tests sequence delivery and categorization, and generates logs in `results/standalone/`.
+
+### Mode 3: Interactive Terminal Showcase (Viva & Evaluation Demo)
+
+To present the working project directly inside the terminal during demonstrations and viva defense:
+```bash
+python3 demo.py
+```
+Or via the experiment orchestrator:
+```bash
+./run_experiment.sh demo
+```
+Options:
+- Interactive mode (default): Pauses at each phase with keypress prompts, allowing you to walk through and explain concepts step-by-step.
+- Automated mode: `python3 demo.py --auto` (runs continuously with automated pacing).
+
+Demonstration Phases:
+1. Architecture & Protocol: Renders the network topology and RFC DSCP/TOS mapping matrix.
+2. Live Socket Telemetry: Spins up live UDP sockets and streams concurrent client logs with real-time latency measurement and categorization.
+3. Baseline Congestion: Simulates link saturation and demonstrates uniform packet drops where critical alerts are lost.
+4. SDN Prioritization: Demonstrates Ryu telemetry detection, OpenFlow 1.3 DSCP flow rule installation, and priority queue delivery with 0% critical loss.
+5. Evaluation & Viva Summary: Displays the side-by-side performance matrix and reviews defense questions.
 
 ### Automated Verification Test Suite
 

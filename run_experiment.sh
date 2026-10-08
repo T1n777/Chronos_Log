@@ -15,6 +15,7 @@ show_help() {
 Chronos Experiment Orchestrator
 
 Usage:
+  ./run_experiment.sh demo         Run interactive terminal showcase for evaluation & viva
   ./run_experiment.sh standalone   Run local end-to-end socket verification test
   ./run_experiment.sh analyze      Analyze existing experiment output or run benchmark
   ./run_experiment.sh clean        Clean up background processes, sockets, and results
@@ -36,6 +37,10 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 case "${1:-help}" in
+    demo)
+        python3 demo.py "${@:2}"
+        ;;
+
     standalone)
         echo "=========================================================="
         echo " Chronos Standalone End-to-End Verification Test"
