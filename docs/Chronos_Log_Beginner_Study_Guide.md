@@ -51,14 +51,9 @@ This guide is written specifically for students who want a step-by-step, zero-ja
    - [4. Team Lead's Components: Ryu Controller & QoS Shaper](#4-team-leads-components-ryu-controller--qos-shaper)
 7. [Part 7: Monday Presentation & Terminal Demo Gameplan](#part-7-monday-presentation--terminal-demo-gameplan)
    - [1. How to Launch the Showcase (demo.py)](#1-how-to-launch-the-showcase-demopy)
-   - [2. Phase-by-Phase Walkthrough & Screen Action](#2-phase-by-phase-walkthrough--screen-action)
-8. [Part 8: Word-for-Word Speaking Scripts for Every Team Member](#part-8-word-for-word-speaking-scripts-for-every-team-member)
-   - [1. Team Lead: The Opening Hook & Architecture Pitch](#1-team-lead-the-opening-hook--architecture-pitch)
-   - [2. Teammate A: The Client, Sockets, and Flooding](#2-teammate-a-the-client-sockets-and-flooding)
-   - [3. Teammate B: The Central Server & Packet Drop Math](#3-teammate-b-the-central-server--packet-drop-math)
-   - [4. Team Lead: The SDN Control Plane, QoS Queues, and Conclusion](#4-team-lead-the-sdn-control-plane-qos-queues-and-conclusion)
-9. [Part 9: The Viva Exam Survival Guide (15 Questions Made Simple)](#part-9-the-viva-exam-survival-guide-15-questions-made-simple)
-10. [Part 10: Quick-Reference Cheat Sheet (Numbers & Formulas)](#part-10-quick-reference-cheat-sheet-numbers--formulas)
+   - [2. Phase-by-Phase Technical Walkthrough & Metrics](#2-phase-by-phase-technical-walkthrough--metrics)
+8. [Part 8: The Viva Exam Survival Guide (15 Questions Made Simple)](#part-8-the-viva-exam-survival-guide-15-questions-made-simple)
+9. [Part 9: Quick-Reference Cheat Sheet (Numbers & Formulas)](#part-9-quick-reference-cheat-sheet-numbers--formulas)
 
 ---
 
@@ -497,23 +492,23 @@ This interactive script runs through **5 distinct phases**. Press Enter between 
 
 ---
 
-## 2. Phase-by-Phase Walkthrough & Screen Action
+## 2. Phase-by-Phase Technical Walkthrough & Metrics
 
 ### Phase 1: Architecture & Protocol Verification
 - **What happens on screen:** Displays the 5-host ASCII topology diagram, the RFC DSCP table, and automatically verifies that all bit-shifts (`46 << 2 = 184`) encode and decode perfectly.
-- **Key message:** Proves that our mathematical protocol design is RFC 2474 compliant.
+- **Technical verification:** Proves that our mathematical protocol design is RFC 2474 compliant.
 
 ### Phase 2: Live Socket Ingestion Across Real Sockets
 - **What happens on screen:** Binds a real UDP socket on port 5514. Simulates three microservices (`payment-service`, `auth-gateway`, `order-processor`) streaming real datagrams.
-- **Key message:** Proves that our client and server code genuinely works over live network sockets with sub-millisecond latencies.
+- **Technical verification:** Proves that our client and server code genuinely works over live network sockets with sub-millisecond latencies.
 
 ### Phase 3: Bottleneck Link Saturation & Baseline Dropping
 - **What happens on screen:** Simulates host `h5` flooding 5.0 Mbps into the 1.0 Mbps link. Displays a full buffer dropping packets across all categories.
-- **Key message:** Shows that without SDN, **41.7% of CRITICAL logs are dropped** by the dumb switch!
+- **Technical verification:** Shows that without SDN, **41.7% of CRITICAL logs are dropped** by the dumb switch!
 
 ### Phase 4: SDN Controller Telemetry & Dynamic Flow Intervention
 - **What happens on screen:** The Ryu controller detects the traffic spike (>650 Kbps) and dynamically installs OpenFlow 1.3 flow rules assigning DSCP 46 and 34 to **Queue 1**.
-- **Key message:** Demonstrates real-time, autonomous SDN control plane intervention.
+- **Technical verification:** Demonstrates real-time, autonomous SDN control plane intervention.
 
 ### Phase 5: Quantitative Baseline vs. SDN-QoS Comparison Matrix
 - **What happens on screen:** Renders the side-by-side comparative evaluation matrix:
@@ -528,59 +523,7 @@ This interactive script runs through **5 distinct phases**. Press Enter between 
 
 ---
 
-# Part 8: Word-for-Word Speaking Scripts for Every Team Member
-
-Memorize or read these exact speaking scripts during Monday's presentation. They are written in clear, natural language so that nobody freezes!
-
-## 1. Team Lead: The Opening Hook & Architecture Pitch
-
-> "Good morning, evaluators. In large cloud platforms like Amazon or Netflix, whenever a critical outage occurs—such as a primary database server crashing—systems experience a massive avalanche of error logs.
-> 
-> Under standard computer networks, switches use dumb First-In, First-Out buffers. When the network gets congested, the switches drop packets completely at random. This means life-or-death alarms like 'Database Connection Lost' disappear, leaving engineers blind during an outage!
-> 
-> To solve this, our team engineered **Chronos Log**: a distributed log aggregation system with SDN Quality-of-Service prioritization. By dynamically programming OpenFlow 1.3 switches using a Ryu controller, our network inspects IPv4 DSCP priority headers and steers critical logs into guaranteed-bandwidth queues.
-> 
-> Even when the network is flooded to 500% capacity, our system guarantees 100% delivery of critical logs with under 10-millisecond latency. My teammates will now explain the client, server, and congestion tools."
-
----
-
-## 2. Teammate A: The Client, Sockets, and Flooding
-
-> "I was responsible for developing the client-side logging agents in `log_client.py` and the network flooder in `flood.py`.
-> 
-> First, we selected connectionless UDP sockets using `socket.AF_INET` and `socket.SOCK_DGRAM`. UDP is the industry standard for logging because it has zero connection overhead. An application writing a log line will never freeze its users waiting for a network handshake.
-> 
-> Second, to communicate packet priority without changing the log message itself, I used the Linux socket option `sock.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, tos_byte)`. Because DSCP lives in the upper 6 bits of the TOS byte, we shift our priority value left by two bits. For example, CRITICAL logs use DSCP 46, which shifts to decimal 184, or hex 0xB8.
-> 
-> Finally, in `flood.py`, I created a traffic generator that blasts 5.0 Mbps of raw UDP packets across our 1.0 Mbps bottleneck link, creating genuine buffer overflow so we can prove our SDN prioritization works."
-
----
-
-## 3. Teammate B: The Central Server & Packet Drop Math
-
-> "I developed the centralized log aggregation server in `log_server.py` and authored the documentation.
-> 
-> Our server binds to UDP port 5514 across all interfaces. Because the server must ingest hundreds of logs per second while simultaneously reporting statistics, I implemented a multi-threaded architecture. The main thread runs a continuous receive loop, while a background daemon thread prints telemetry every 10 seconds. To prevent data corruption between threads, all shared dictionaries are protected by a `threading.Lock()` mutex.
-> 
-> Because UDP does not report lost packets, I designed an application-layer drop detection algorithm. The server tracks the expected sequence number for each sending host. If a packet arrives with sequence 15 when sequence 12 was expected, the server immediately calculates that 3 packets were dropped by the network!
-> 
-> Additionally, the server calculates one-way transit latency by subtracting the client's send timestamp from the server's receive timestamp. When shut down, the server automatically exports categorized JSON files for auditing."
-
----
-
-## 4. Team Lead: The SDN Control Plane, QoS Queues, and Conclusion
-
-> "To bring everything together, I developed the OpenFlow 1.3 Ryu SDN controller in `sdn_controller.py` and the Linux HTB queue shaper in `setup_qos.sh`.
-> 
-> Our Ryu controller maintains an active telemetry loop, polling switch port statistics every 3 seconds. When traffic on our bottleneck link exceeds 650 Kbps, the controller detects congestion and dynamically installs high-priority OpenFlow rules matching DSCP 46 and 34.
-> 
-> These rules instruct switch s2 to steer critical packets into Queue 1, which has a guaranteed bandwidth of 800 Kbps. As you can see in our results matrix, CRITICAL packet loss dropped from 41.7% in the baseline down to exactly 0.0% under SDN-QoS! Low-priority debug chatter absorbed the congestion with 66.7% loss.
-> 
-> We have successfully proven selective network degradation using Software-Defined Networking. Thank you, and we are ready for your questions!"
-
----
-
-# Part 9: The Viva Exam Survival Guide (15 Questions Made Simple)
+# Part 8: The Viva Exam Survival Guide (15 Questions Made Simple)
 
 **Q1. Explain your project in two simple sentences.**
 > **Answer:** "We built a distributed log aggregation system where multiple computers send application logs via UDP to a central server across a slow bottleneck link. When the link gets congested, a Ryu SDN controller detects the traffic spike and steers critical logs into a guaranteed-bandwidth queue, ensuring zero critical alarms are lost."
@@ -629,7 +572,7 @@ Memorize or read these exact speaking scripts during Monday's presentation. They
 
 ---
 
-# Part 10: Quick-Reference Cheat Sheet (Numbers & Formulas)
+# Part 9: Quick-Reference Cheat Sheet (Numbers & Formulas)
 
 ## 1. Network Addressing & Ports Cheat Sheet
 
