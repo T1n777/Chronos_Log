@@ -248,7 +248,7 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print(f"      {Colors.GREEN}[SAVED] Summary exported to : {summary_path}{Colors.RESET}")
     print(f"      {Colors.GREEN}[SAVED] Categorized logs in  : {output_dir}/logs_<severity>.json{Colors.RESET}")
     print(f"\n{Colors.BOLD}{Colors.CYAN}================================================================================{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.GREEN} SYSTEM EXECUTION COMPLETED SUCCESSFULLY - READY FOR EVALUATION{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.GREEN} SYSTEM EXECUTION COMPLETED SUCCESSFULLY{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.CYAN}================================================================================{Colors.RESET}\n")
 
     server_running = False
