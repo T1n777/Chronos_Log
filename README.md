@@ -7,6 +7,7 @@ A distributed logging system where multiple network hosts transmit application l
 ## Table of Contents
 
 - [Overview](#overview)
+- [Quick Start](#quick-start)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
 - [Protocol Specification](#protocol-specification)
@@ -29,6 +30,25 @@ Chronos solves this challenge by integrating UDP socket programming with Softwar
 1. Log clients mark the IPv4 Type of Service (TOS) byte with standard Differentiated Services Code Point (DSCP) values according to message severity.
 2. The Ryu SDN controller monitors network flow telemetry and link utilization in real time.
 3. Upon detecting bottleneck congestion, the controller installs OpenFlow rules directing high-priority datagrams into guaranteed priority queues, shielding critical messages from packet loss.
+
+---
+
+## Quick Start
+
+To verify the working system immediately, clone the repository and execute `main.py`. It requires only Python 3 standard library and runs out-of-the-box with zero configuration:
+
+```bash
+git clone https://github.com/T1n777/Chronos_Log.git
+cd Chronos_Log
+python3 main.py
+```
+
+This single command:
+- Launches the centralized UDP log server on port 5514.
+- Generates live microservice streams with socket-level IPv4 DSCP/TOS priority tagging.
+- Demonstrates bottleneck queue overflow and baseline packet drops.
+- Triggers dynamic SDN OpenFlow 1.3 priority queue steering.
+- Displays live latency calculations and outputs the comparative performance matrix.
 
 ---
 
@@ -134,6 +154,7 @@ In IPv4, the TOS octet allocates the upper 6 bits to DSCP and the lower 2 bits t
 
 ```
 Chronos_Log/
+├── main.py              # Primary executable: runs complete working system out-of-the-box
 ├── protocol.py          # Shared protocol constants, DSCP mappings, serializer
 ├── log_client.py        # UDP client generating severity-tagged logs
 ├── log_server.py        # Centralized server, categorizer, and metrics recorder
@@ -143,7 +164,7 @@ Chronos_Log/
 ├── setup_qos.sh         # Open vSwitch HTB queue configuration script
 ├── analyze_results.py   # Performance comparison and reporting tool
 ├── test_suite.py        # Automated unit and integration test suite
-├── demo.py              # Interactive terminal showcase for evaluation and viva
+├── demo.py              # CLI demonstration script (delegates to main.py)
 ├── run_experiment.sh    # Test automation script
 ├── LICENSE              # Open source MIT license
 └── README.md            # Technical documentation

@@ -418,14 +418,11 @@ def main():
     print(f" {Colors.BOLD}{Colors.WHITE}CHRONOS LOG : DISTRIBUTED LOG AGGREGATION & SDN PRIORITIZATION{Colors.RESET}")
     print(" Computer Networks Mini Project Live Terminal Walkthrough")
     print("=" * 80)
-    time.sleep(0.5)
-
-    phase_1_architecture(args.auto)
-    phase_2_live_sockets(args.auto)
-    phase_3_congestion_baseline(args.auto)
-    phase_4_sdn_qos(args.auto)
-    phase_5_evaluation(args.auto)
+    # Delegate directly to main system runner for smooth automated execution
+    from main import run_system
+    run_system()
 
 
 if __name__ == "__main__":
     main()
+

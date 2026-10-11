@@ -36,9 +36,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-case "${1:-help}" in
-    demo)
-        python3 demo.py "${@:2}"
+case "${1:-run}" in
+    run|demo)
+        python3 main.py "${@:2}"
         ;;
 
     standalone)
