@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""
-demo.py - Interactive Terminal Demonstration of Chronos Log Aggregation & SDN QoS
-
-Provides an interactive, step-by-step presentation of the entire project
-directly inside the terminal for professors, evaluators, and viva defense:
-- Phase 1: System Architecture, Topology & DiffServ QoS Protocol
-- Phase 2: Live Low-Level UDP Socket Telemetry & Categorization
-- Phase 3: The Congestion Problem (Baseline: Indiscriminate Packet Loss)
-- Phase 4: The Solution: SDN Dynamic Flow Rule Telemetry & Priority Queuing
-- Phase 5: Quantitative Evaluation & Viva Question Summary
-"""
 
 import os
 import sys
@@ -19,7 +8,6 @@ import threading
 import argparse
 from typing import Dict, List, Any
 
-# Ensure Chronos_Log directory is on sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
@@ -32,8 +20,6 @@ from protocol import (
     parse_log_payload,
 )
 
-
-# Terminal ANSI Color Formatting
 class Colors:
     RESET = "\033[0m"
     BOLD = "\033[1m"
@@ -49,7 +35,6 @@ class Colors:
     BG_GREEN = "\033[42m"
     BG_BLUE = "\033[44m"
 
-
 def color_sev(sev: str) -> str:
     s = sev.upper()
     if s == "CRITICAL":
@@ -63,7 +48,6 @@ def color_sev(sev: str) -> str:
     else:
         return f"{Colors.DIM}[DEBUG]   {Colors.RESET}"
 
-
 def pause(auto: bool, delay: float = 1.0):
     if auto:
         time.sleep(delay)
@@ -76,7 +60,6 @@ def pause(auto: bool, delay: float = 1.0):
             sys.exit(0)
     print()
 
-
 def print_header(title: str, step: str = ""):
     print("\n" + "=" * 80)
     if step:
@@ -85,10 +68,6 @@ def print_header(title: str, step: str = ""):
         print(f" {Colors.BOLD}{Colors.WHITE}{title.upper()}{Colors.RESET}")
     print("=" * 80)
 
-
-# =============================================================================
-# PHASE 1: Architecture, Protocol & DiffServ Mapping
-# =============================================================================
 def phase_1_architecture(auto: bool):
     print_header("System Architecture & DiffServ QoS Protocol", "Phase 1")
     print(f"""
@@ -141,10 +120,6 @@ In IPv4, the socket layer sets TOS = (DSCP << 2) using setsockopt().
 """)
     pause(auto, 2.0)
 
-
-# =============================================================================
-# PHASE 2: Live Socket Transmission & Server Categorization
-# =============================================================================
 def phase_2_live_sockets(auto: bool):
     print_header("Live UDP Socket Transmission & Categorization", "Phase 2")
     print(f"{Colors.BOLD}[*] Initializing local UDP log server on 127.0.0.1:15514...{Colors.RESET}")
@@ -230,10 +205,6 @@ def phase_2_live_sockets(auto: bool):
 
     pause(auto, 2.0)
 
-
-# =============================================================================
-# PHASE 3: Congestion without QoS (Baseline)
-# =============================================================================
 def phase_3_congestion_baseline(auto: bool):
     print_header("The Congestion Problem (Baseline: No QoS)", "Phase 3")
     print(f"""
@@ -247,13 +218,13 @@ Observe what happens to CRITICAL logs when the queue overflows:
         ("CRITICAL", "Primary database replica unreachable", False),
         ("DEBUG",    "Cache key lookup expired", True),
         ("INFO",     "Scheduled cron worker executed", True),
-        ("CRITICAL", "Consensus quorum lost in cluster", True),   # DROPPED!
+        ("CRITICAL", "Consensus quorum lost in cluster", True),
         ("ERROR",    "Payment transaction timeout", False),
         ("DEBUG",    "Thread pool idle count 4", True),
         ("WARNING",  "Memory usage at 85%", False),
-        ("CRITICAL", "Data volume /data corrupted", True),        # DROPPED!
+        ("CRITICAL", "Data volume /data corrupted", True),
         ("INFO",     "User session logout", False),
-        ("ERROR",    "Storage snapshot write failed", True),       # DROPPED!
+        ("ERROR",    "Storage snapshot write failed", True),
         ("DEBUG",    "Garbage collection cycle done", True),
         ("CRITICAL", "Core authentication service halted", False),
     ]
@@ -289,10 +260,6 @@ Observe what happens to CRITICAL logs when the queue overflows:
 
     pause(auto, 2.0)
 
-
-# =============================================================================
-# PHASE 4: Dynamic SDN Prioritization (With QoS)
-# =============================================================================
 def phase_4_sdn_qos(auto: bool):
     print_header("The Solution: Dynamic SDN Telemetry & Prioritization", "Phase 4")
     print(f"""
@@ -361,10 +328,6 @@ def phase_4_sdn_qos(auto: bool):
 
     pause(auto, 2.0)
 
-
-# =============================================================================
-# PHASE 5: Performance Evaluation & Quantitative Comparison
-# =============================================================================
 def phase_5_evaluation(auto: bool):
     print_header("Performance Evaluation & Quantitative Comparison", "Phase 5")
     print(f"""
@@ -402,7 +365,6 @@ def phase_5_evaluation(auto: bool):
     print(f" {Colors.GREEN}{Colors.BOLD}Demonstration Concluded Successfully.{Colors.RESET}")
     print("=" * 80)
 
-
 def main():
     parser = argparse.ArgumentParser(
         description="Chronos Log Aggregation & SDN QoS Interactive Demonstration."
@@ -418,10 +380,9 @@ def main():
     print(f" {Colors.BOLD}{Colors.WHITE}CHRONOS LOG : DISTRIBUTED LOG AGGREGATION & SDN PRIORITIZATION{Colors.RESET}")
     print(" Computer Networks Mini Project Live Terminal Walkthrough")
     print("=" * 80)
-    # Delegate directly to main system runner for smooth automated execution
+
     from main import run_system
     run_system()
-
 
 if __name__ == "__main__":
     main()

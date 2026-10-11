@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-log_server.py - Centralized UDP Log Aggregator and Metrics Analyzer
-
-Receives UDP datagrams from multiple distributed hosts, parses and validates
-log payloads, categorizes them by severity, detects packet losses using
-sequence numbers, measures end-to-end delivery latencies, prints live metrics,
-and exports structured JSON reports.
-"""
 
 import os
 import sys
@@ -27,7 +19,6 @@ from protocol import (
     parse_log_payload,
 )
 
-
 class LogServer:
     def __init__(
         self,
@@ -43,21 +34,17 @@ class LogServer:
         self.output_dir = output_dir
         self.quiet = quiet
 
-        # Initialize UDP datagram socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # Allow immediate port reuse across runs
+
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((self.bind_ip, self.port))
 
-        # Categorized log storage: severity -> list of dict entries
         self.categorized_logs: Dict[str, List[Dict[str, Any]]] = {
             sev: [] for sev in SEVERITIES
         }
 
-        # Delivery latency tracker: severity -> list of latency in milliseconds
         self.latencies: Dict[str, List[float]] = {sev: [] for sev in SEVERITIES}
 
-        # Sequence and loss tracking per host
         self.host_stats: Dict[str, Dict[str, Any]] = defaultdict(
             lambda: {
                 "expected_seq": 0,
@@ -70,7 +57,6 @@ class LogServer:
             }
         )
 
-        # Thread safety lock
         self.lock = threading.Lock()
         self.is_running = True
         self.start_time = time.time()
@@ -78,9 +64,7 @@ class LogServer:
         self.total_lost = 0
 
     def start(self) -> None:
-        """
-        Start the UDP listener and the background periodic reporting thread.
-        """
+
         print("=" * 70)
         print(" Chronos Centralized Log Aggregation Server")
         print("=" * 70)
@@ -90,20 +74,17 @@ class LogServer:
         print(" Status           : Ready to receive datagrams. Press Ctrl+C to exit.")
         print("=" * 70)
 
-        # Create output directory
         os.makedirs(self.output_dir, exist_ok=True)
 
-        # Start background statistics reporter thread
         reporter_thread = threading.Thread(target=self._stats_reporter_loop, daemon=True)
         reporter_thread.start()
 
-        # Main reception loop
         try:
             while self.is_running:
                 data, addr = self.sock.recvfrom(BUFFER_SIZE)
                 self._process_datagram(data, addr)
         except OSError:
-            # Raised when socket is closed during shutdown
+
             pass
         except KeyboardInterrupt:
             print("\n[INFO] Shutdown signal received.")
@@ -111,9 +92,7 @@ class LogServer:
             self.stop()
 
     def stop(self) -> None:
-        """
-        Safely stop the server, print the final summary, and write JSON output.
-        """
+
         if not self.is_running:
             return
         self.is_running = False
@@ -127,9 +106,7 @@ class LogServer:
         self._export_json_reports()
 
     def _process_datagram(self, data: bytes, addr: Tuple[str, int]) -> None:
-        """
-        Parse, timestamp, categorize, and record a received UDP datagram.
-        """
+
         receive_time = time.time()
         entry, err = parse_log_payload(data)
 
@@ -143,18 +120,16 @@ class LogServer:
         seq = entry["seq"]
         send_time = entry["send_time"]
 
-        # Calculate one-way delivery latency (in ms)
         latency_ms = max((receive_time - send_time) * 1000.0, 0.0)
         entry["receive_time"] = receive_time
         entry["delivery_latency_ms"] = round(latency_ms, 3)
 
         with self.lock:
-            # Store in categorized list
+
             self.categorized_logs[severity].append(entry)
             self.latencies[severity].append(latency_ms)
             self.total_received += 1
 
-            # Update host-specific sequence tracker
             h_stat = self.host_stats[host]
             if h_stat["first_seen"] is None:
                 h_stat["first_seen"] = receive_time
@@ -171,7 +146,7 @@ class LogServer:
             elif seq == expected:
                 h_stat["expected_seq"] = seq + 1
             else:
-                # Received packet with sequence number lower than expected (out-of-order)
+
                 h_stat["out_of_order"] += 1
 
         if not self.quiet:
@@ -181,18 +156,14 @@ class LogServer:
             )
 
     def _stats_reporter_loop(self) -> None:
-        """
-        Periodically output aggregate statistics table.
-        """
+
         while self.is_running:
             time.sleep(self.stats_interval)
             if self.is_running:
                 self._print_stats_table()
 
     def _print_stats_table(self) -> None:
-        """
-        Render current operational metrics to the console.
-        """
+
         with self.lock:
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             elapsed = max(time.time() - self.start_time, 0.001)
@@ -241,20 +212,16 @@ class LogServer:
             print("=" * 76 + "\n")
 
     def _print_final_summary(self) -> None:
-        """
-        Print final report upon shutdown.
-        """
+
         print("\n" + "=" * 76)
         print(" FINAL SYSTEM PERFORMANCE REPORT")
         print("=" * 76)
         self._print_stats_table()
 
     def _export_json_reports(self) -> None:
-        """
-        Export categorized logs and a machine-readable summary JSON for evaluation.
-        """
+
         with self.lock:
-            # 1. Export categorized log files
+
             for sev in SEVERITIES:
                 filepath = os.path.join(self.output_dir, f"logs_{sev.lower()}.json")
                 try:
@@ -264,7 +231,6 @@ class LogServer:
                 except IOError as err:
                     print(f"[ERROR] Failed writing {filepath}: {err}", file=sys.stderr)
 
-            # 2. Build and export aggregate summary file
             elapsed = max(time.time() - self.start_time, 0.001)
             total_pkts = self.total_received + self.total_lost
             overall_loss = (self.total_lost / total_pkts * 100.0) if total_pkts > 0 else 0.0
@@ -309,7 +275,6 @@ class LogServer:
             except IOError as err:
                 print(f"[ERROR] Failed writing summary report: {err}", file=sys.stderr)
 
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Centralized UDP Log Server with Categorization and Metrics."
@@ -343,7 +308,6 @@ def parse_args():
     )
     return parser.parse_args()
 
-
 if __name__ == "__main__":
     args = parse_args()
     server = LogServer(
@@ -354,7 +318,6 @@ if __name__ == "__main__":
         quiet=args.quiet,
     )
 
-    # Attach signal handler for graceful shutdown
     def _sig_handler(sig, frame):
         server.stop()
         sys.exit(0)

@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-log_client.py - UDP Log Client with IP TOS / DSCP Prioritization Marking
-
-Generates and transmits structured application logs over UDP to a centralized
-log server. Each datagram has its IPv4 Type of Service (TOS) header marked
-according to its severity level (CRITICAL, ERROR, WARNING, INFO, DEBUG) to enable
-network-layer QoS prioritization.
-"""
 
 import socket
 import sys
@@ -21,7 +13,6 @@ from protocol import (
     create_log_payload,
 )
 
-# Realistic message pools reflecting distributed application workloads
 SAMPLE_LOG_MESSAGES: Dict[str, List[str]] = {
     "DEBUG": [
         "Memory cache hit ratio: 0.942 on key user_session_4920",
@@ -65,7 +56,6 @@ SAMPLE_LOG_MESSAGES: Dict[str, List[str]] = {
     ],
 }
 
-# Default probability distribution: common DEBUG/INFO, rare CRITICAL
 SEVERITY_WEIGHTS: Dict[str, int] = {
     "DEBUG": 35,
     "INFO": 35,
@@ -74,11 +64,8 @@ SEVERITY_WEIGHTS: Dict[str, int] = {
     "CRITICAL": 5,
 }
 
-
 def pick_severity_and_message(selected_severity: str) -> Tuple[str, str]:
-    """
-    Select severity and a corresponding realistic log message.
-    """
+
     if selected_severity != "mixed":
         sev = selected_severity.upper()
         if sev not in SAMPLE_LOG_MESSAGES:
@@ -91,7 +78,6 @@ def pick_severity_and_message(selected_severity: str) -> Tuple[str, str]:
     msg = random.choice(SAMPLE_LOG_MESSAGES[sev])
     return sev, msg
 
-
 def run_client(
     server_ip: str,
     server_port: int,
@@ -101,13 +87,10 @@ def run_client(
     severity_mode: str,
     quiet: bool = False,
 ) -> None:
-    """
-    Main client transmission loop.
-    """
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     dest_addr = (server_ip, server_port)
 
-    # Transmission counters
     sent_counts: Dict[str, int] = {sev: 0 for sev in SEVERITIES}
     total_sent = 0
     seq = 0
@@ -134,18 +117,15 @@ def run_client(
                 message=msg,
             )
 
-            # Retrieve TOS byte for this severity
             tos_val = SEVERITY_TOS.get(sev, 0)
 
-            # Apply IP_TOS socket option before sending datagram
             try:
                 sock.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, tos_val)
             except OSError as err:
-                # Some environments might restrict raw TOS manipulation
+
                 if seq == 0:
                     print(f"[WARN] Failed to set IP_TOS ({err}). Proceeding with default TOS.", file=sys.stderr)
 
-            # Transmit datagram over UDP
             sock.sendto(payload, dest_addr)
 
             sent_counts[sev] += 1
@@ -181,7 +161,6 @@ def run_client(
             pct = (c / total_sent * 100.0) if total_sent > 0 else 0.0
             print(f" {s:<12} {c:<10} {pct:>6.1f}%")
         print("=" * 65)
-
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -227,7 +206,6 @@ def parse_args():
         help="Suppress per-packet console logs and display only summary",
     )
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     args = parse_args()

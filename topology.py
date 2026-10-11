@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-topology.py - Mininet Network Topology for Distributed Log Aggregation
-
-Constructs a multi-switch OpenFlow network with a designated 1 Mbps bottleneck
-link interconnecting distributed log client hosts (h1, h2, h3), a background
-congestion generator (h5), and the centralized log server (h4).
-"""
 
 import sys
 import argparse
@@ -18,7 +11,7 @@ try:
     from mininet.cli import CLI
     from mininet.log import setLogLevel, info
 except ImportError:
-    # Allow importing/viewing without mininet installed
+
     Mininet = None
     OVSSwitch = None
     RemoteController = None
@@ -26,7 +19,6 @@ except ImportError:
     CLI = None
     setLogLevel = None
     info = print
-
 
 def build_chronos_network(
     controller_ip: str = "127.0.0.1",
@@ -36,17 +28,7 @@ def build_chronos_network(
     access_bw: float = 10.0,
     access_delay: str = "1ms",
 ):
-    """
-    Build and initialize the Mininet topology.
 
-    Network Diagram:
-        h1 (10.0.0.1) --- s1 -----------------+
-        h5 (10.0.0.5) --- s1                  |
-                                              |
-        h2 (10.0.0.2) --- s2 --- (1 Mbps) --- s4 --- h4 (10.0.0.4 Server)
-                          |   (bottleneck)
-        h3 (10.0.0.3) --- s3
-    """
     if Mininet is None:
         print("[ERROR] Mininet library not found. Please install Mininet or run inside VM.", file=sys.stderr)
         sys.exit(1)
@@ -78,8 +60,8 @@ def build_chronos_network(
     h1 = net.addHost("h1", ip="10.0.0.1/24", mac="00:00:00:00:00:01")
     h2 = net.addHost("h2", ip="10.0.0.2/24", mac="00:00:00:00:00:02")
     h3 = net.addHost("h3", ip="10.0.0.3/24", mac="00:00:00:00:00:03")
-    h4 = net.addHost("h4", ip="10.0.0.4/24", mac="00:00:00:00:00:04")  # Central Log Server
-    h5 = net.addHost("h5", ip="10.0.0.5/24", mac="00:00:00:00:00:05")  # Congestion Generator
+    h4 = net.addHost("h4", ip="10.0.0.4/24", mac="00:00:00:00:00:04")
+    h5 = net.addHost("h5", ip="10.0.0.5/24", mac="00:00:00:00:00:05")
 
     info("*** Adding Host-to-Switch Access Links\n")
     net.addLink(h1, s1, bw=access_bw, delay=access_delay)
@@ -98,7 +80,7 @@ def build_chronos_network(
         s4,
         bw=bottleneck_bw,
         delay=bottleneck_delay,
-        max_queue_size=50,  # Constrained buffer to trigger packet drops under congestion
+        max_queue_size=50,
     )
 
     info("*** Building Network and Starting Switches\n")
@@ -118,7 +100,6 @@ def build_chronos_network(
     info("=" * 65 + "\n\n")
 
     return net
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -167,7 +148,6 @@ def main():
     finally:
         info("*** Stopping Mininet network\n")
         net.stop()
-
 
 if __name__ == "__main__":
     main()

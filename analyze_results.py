@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-analyze_results.py - Comparative Performance Evaluation and Metrics Analysis
-
-Compares performance metrics between:
-1. Baseline (Static Network without SDN Prioritization during Congestion)
-2. SDN QoS (Dynamic DiffServ Prioritization via OpenFlow 1.3 Queuing)
-
-Analyzes packet loss percentages, packet delivery ratios, delivery latencies,
-and generates structured comparison tables, CSV exports, and evaluation reports.
-"""
 
 import os
 import sys
@@ -18,11 +8,8 @@ import argparse
 from typing import Dict, Any, List, Optional
 from protocol import SEVERITIES
 
-
 def load_run_data(run_dir: str) -> Optional[Dict[str, Any]]:
-    """
-    Load server_summary.json and categorized log files from a run directory.
-    """
+
     if not os.path.isdir(run_dir):
         return None
 
@@ -34,7 +21,6 @@ def load_run_data(run_dir: str) -> Optional[Dict[str, Any]]:
         except Exception as err:
             print(f"[WARN] Error reading {summary_file}: {err}", file=sys.stderr)
 
-    # Fallback: compute metrics directly from individual log files
     computed: Dict[str, Any] = {
         "total_packets_received": 0,
         "total_packets_lost": 0,
@@ -63,13 +49,8 @@ def load_run_data(run_dir: str) -> Optional[Dict[str, Any]]:
 
     return computed
 
-
 def generate_synthetic_benchmark() -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """
-    Generate representative benchmark metrics matching empirical SDN mininet
-    experimental runs (1 Mbps bottleneck link saturated with 5 Mbps background flood).
-    Used as an authoritative reference model or when testing analysis offline.
-    """
+
     baseline = {
         "duration_seconds": 60.0,
         "total_packets_transmitted": 1800,
@@ -103,15 +84,12 @@ def generate_synthetic_benchmark() -> Tuple[Dict[str, Any], Dict[str, Any]]:
     }
     return baseline, qos
 
-
 def print_comparison_table(
     baseline_data: Dict[str, Any],
     qos_data: Dict[str, Any],
     output_report_file: Optional[str] = None,
 ) -> None:
-    """
-    Render and save a structured side-by-side comparison table.
-    """
+
     b_sev = baseline_data.get("severity_metrics", {})
     q_sev = qos_data.get("severity_metrics", {})
 
@@ -177,7 +155,6 @@ def print_comparison_table(
     formatted_text = "\n".join(lines)
     print(formatted_text)
 
-    # Save to text report if requested
     if output_report_file:
         try:
             with open(output_report_file, "w", encoding="utf-8") as f:
@@ -186,7 +163,6 @@ def print_comparison_table(
         except IOError as err:
             print(f"[ERROR] Failed writing report file: {err}", file=sys.stderr)
 
-    # Also save CSV comparison
     csv_file = "comparison_report.csv"
     try:
         with open(csv_file, "w", newline="", encoding="utf-8") as f:
@@ -206,7 +182,6 @@ def print_comparison_table(
         print(f"[REPORT] Saved CSV comparison to: {csv_file}")
     except IOError as err:
         print(f"[ERROR] Failed writing CSV: {err}", file=sys.stderr)
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -248,7 +223,6 @@ def main():
         baseline_data, qos_data = generate_synthetic_benchmark()
 
     print_comparison_table(baseline_data, qos_data, args.output_report)
-
 
 if __name__ == "__main__":
     main()

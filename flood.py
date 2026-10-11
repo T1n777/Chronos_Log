@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-"""
-flood.py - Controlled UDP Traffic and Congestion Generator
-
-Generates high-rate UDP background traffic at a target bandwidth (Mbps)
-to deliberately saturate network links (e.g. Mininet bottleneck link s2-s4),
-triggering controlled queue backlog, bufferbloat, and packet drops for QoS evaluation.
-"""
 
 import sys
 import time
 import socket
 import argparse
 from typing import Optional
-
 
 def run_flood(
     target_ip: str,
@@ -22,19 +14,13 @@ def run_flood(
     packet_size: int = 1400,
     report_interval: float = 2.0,
 ) -> None:
-    """
-    Generate controlled UDP traffic to saturate the network.
-    """
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     dest_addr = (target_ip, target_port)
 
-    # Pre-generate dummy byte payload
     payload = b"X" * max(packet_size, 64)
     actual_pkt_len = len(payload)
 
-    # Calculate transmission intervals
-    # Total bits per second = rate_mbps * 1,000,000
-    # Bits per packet (Ethernet payload) = actual_pkt_len * 8
     bits_per_sec = rate_mbps * 1_000_000.0
     bits_per_pkt = actual_pkt_len * 8.0
     pkts_per_sec = bits_per_sec / bits_per_pkt
@@ -75,7 +61,6 @@ def run_flood(
                 )
                 next_report = now + report_interval
 
-            # Precise timing control with burst compensation
             expected_time = start_time + (packets_sent * interval)
             sleep_time = expected_time - time.time()
             if sleep_time > 0.0005:
@@ -96,7 +81,6 @@ def run_flood(
         print(f" Total Data Sent        : {bytes_sent / (1024 * 1024):.2f} MB")
         print(f" Average Bandwidth Rate : {actual_mbps:.2f} Mbps")
         print("=" * 65)
-
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -132,7 +116,6 @@ def parse_args():
         help="UDP payload size in bytes (default: 1400)",
     )
     return parser.parse_args()
-
 
 if __name__ == "__main__":
     args = parse_args()

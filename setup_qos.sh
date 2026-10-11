@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-#
-# setup_qos.sh - Open vSwitch QoS Queue Configuration for Chronos
-#
-# Configures Hierarchical Token Bucket (HTB) rate shaping and dual-queue
-# prioritization on the Mininet bottleneck switch port (s2-eth3).
-#
-# Queue Architecture on 1 Mbps Link:
-#   Queue 0 (Best Effort)   : Min 100 Kbps, Max 200 Kbps (DEBUG, INFO, WARNING, flood)
-#   Queue 1 (High Priority) : Min 800 Kbps, Max 1 Mbps   (CRITICAL, ERROR logs)
-#
 
 set -e
 
@@ -93,20 +83,14 @@ case "$ACTION" in
         echo " Configuring OVS QoS on Bottleneck Port: $PORT_NAME"
         echo "=================================================="
 
-        # Ensure port exists
         if ! sudo ovs-vsctl list port "$PORT_NAME" >/dev/null 2>&1; then
             echo "[WARNING] Port '$PORT_NAME' not currently detected in OVS."
             echo "          Make sure Mininet topology is currently active!"
             echo "          Attempting configuration anyway..."
         fi
 
-        # Clear existing QoS on target port
         sudo ovs-vsctl --if-exists clear port "$PORT_NAME" qos || true
 
-        # Create Linux-HTB QoS with 2 priority queues
-        # Total Bandwidth: 1,000,000 bps (1 Mbps)
-        # Queue 0 (Best Effort)   : Max 200 Kbps (Rate capped under congestion)
-        # Queue 1 (High Priority) : Guaranteed min 800 Kbps, max 1,000,000 bps
         sudo ovs-vsctl set port "$PORT_NAME" qos=@newqos -- \
             --id=@newqos create qos type=linux-htb \
                 other-config:max-rate=1000000 \

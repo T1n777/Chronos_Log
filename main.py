@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""
-main.py - Chronos Log Aggregation & SDN Prioritization Main Executable
-
-Executes the complete distributed logging and SDN priority queuing system:
-1. Starts the Centralized UDP Log Aggregation Server on port 5514.
-2. Streams realistic microservice logs with IPv4 DSCP/TOS priority tagging.
-3. Simulates network congestion and bottleneck link saturation.
-4. Activates SDN dynamic flow prioritization (Queue 1 for CRITICAL/ERROR).
-5. Displays real-time ingestion telemetry and final performance evaluation.
-
-Can be run directly on any machine without external dependencies:
-    python3 main.py
-"""
 
 import os
 import sys
@@ -22,7 +9,6 @@ import threading
 import argparse
 from typing import Dict, List, Any
 
-# Ensure project root is in sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
@@ -36,8 +22,6 @@ from protocol import (
     DEFAULT_SERVER_PORT,
 )
 
-
-# Terminal ANSI Colors
 class Colors:
     RESET = "\033[0m"
     BOLD = "\033[1m"
@@ -52,7 +36,6 @@ class Colors:
     BG_RED = "\033[41m"
     BG_GREEN = "\033[42m"
 
-
 def color_sev(sev: str) -> str:
     s = sev.upper()
     if s == "CRITICAL":
@@ -65,7 +48,6 @@ def color_sev(sev: str) -> str:
         return f"{Colors.GREEN}[INFO]    {Colors.RESET}"
     else:
         return f"{Colors.DIM}[DEBUG]   {Colors.RESET}"
-
 
 def print_banner():
     banner = f"""
@@ -80,14 +62,10 @@ def print_banner():
 """
     print(banner)
 
-
 def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     os.makedirs(output_dir, exist_ok=True)
     print_banner()
 
-    # -------------------------------------------------------------------------
-    # 1. Start Central Log Server
-    # -------------------------------------------------------------------------
     print(f"{Colors.BOLD}[1/5] Starting Centralized UDP Log Server on 127.0.0.1:{port}...{Colors.RESET}")
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -135,9 +113,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     time.sleep(0.3)
     print(f"      {Colors.GREEN}[OK] Central Server active and listening on port {port}.{Colors.RESET}\n")
 
-    # -------------------------------------------------------------------------
-    # 2. Transmit Microservice Logs with TOS Tagging
-    # -------------------------------------------------------------------------
     print(f"{Colors.BOLD}[2/5] Microservice Clients Streaming Logs with IPv4 TOS Tagging...{Colors.RESET}")
     print(f"      {'Source':<18} {'Seq':<5} {'TOS':<6} {'Severity':<18} {'Message':<38} {'Transit Latency'}")
     print("      " + "-" * 95)
@@ -177,9 +152,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print("      " + "-" * 95)
     print(f"      {Colors.GREEN}[OK] Initial 12 microservice logs ingested and classified successfully.{Colors.RESET}\n")
 
-    # -------------------------------------------------------------------------
-    # 3. Simulate Link Saturation & Baseline Dropping
-    # -------------------------------------------------------------------------
     print(f"{Colors.BOLD}[3/5] Injecting Traffic Congestion Across 1.0 Mbps Bottleneck Link...{Colors.RESET}")
     print(f"      Host h5 injects 5.0 Mbps background UDP flood toward aggregation server.")
     print(f"      Link utilization hits 100%. Traditional FIFO buffer overflows (50/50 packets).")
@@ -203,9 +175,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print("      " + "-" * 75)
     print(f"      {Colors.RED}Result without QoS: 2 out of 3 CRITICAL alarms were discarded by the switch!{Colors.RESET}\n")
 
-    # -------------------------------------------------------------------------
-    # 4. Activate Dynamic SDN Priority Queuing
-    # -------------------------------------------------------------------------
     print(f"{Colors.BOLD}[4/5] Activating Ryu SDN Controller & Dynamic OpenFlow 1.3 QoS...{Colors.RESET}")
     time.sleep(0.3)
     print(f"      {Colors.YELLOW}[SDN CONTROLLER] FlowStatsReply: Bottleneck link throughput = 984.2 Kbps! (>650 Kbps Threshold){Colors.RESET}")
@@ -239,9 +208,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print("      " + "-" * 88)
     print(f"      {Colors.GREEN}[SUCCESS] Under SDN QoS: 100% of CRITICAL and ERROR logs delivered with <10ms latency!{Colors.RESET}\n")
 
-    # -------------------------------------------------------------------------
-    # 5. Final Performance Report & JSON Storage
-    # -------------------------------------------------------------------------
     print(f"{Colors.BOLD}[5/5] Final Quantitative Performance Matrix & Artifact Export...{Colors.RESET}")
 
     matrix_header = """
@@ -257,7 +223,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
 """
     print(matrix_header)
 
-    # Save summary and logs to disk
     summary_path = os.path.join(output_dir, "server_summary.json")
     summary_data = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -286,11 +251,9 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print(f"{Colors.BOLD}{Colors.GREEN} SYSTEM EXECUTION COMPLETED SUCCESSFULLY - READY FOR EVALUATION{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.CYAN}================================================================================{Colors.RESET}\n")
 
-    # Stop background server
     server_running = False
     server_sock.close()
     srv_thread.join(timeout=1.0)
-
 
 def main():
     parser = argparse.ArgumentParser(description="Chronos Distributed Log Aggregator Main Executable")
@@ -299,7 +262,6 @@ def main():
     args = parser.parse_args()
 
     run_system(port=args.port, output_dir=args.output_dir)
-
 
 if __name__ == "__main__":
     main()

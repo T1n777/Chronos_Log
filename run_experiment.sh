@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-#
-# run_experiment.sh - Chronos Distributed Log Aggregation Experiment Runner
-#
-# Automates execution of tests across standalone and Mininet environments.
-#
 
 set -e
 
@@ -27,7 +22,6 @@ EOF
 }
 
 cleanup() {
-    # Terminate any lingering background python processes started by this script
     if [[ -n "${SERVER_PID:-}" ]] && kill -0 "$SERVER_PID" 2>/dev/null; then
         echo "[CLEANUP] Stopping log server (PID $SERVER_PID)..."
         kill -INT "$SERVER_PID" 2>/dev/null || true
