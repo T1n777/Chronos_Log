@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+Chronos Automated Unit and Integration Test Suite
+Executes isolated tests verifying:
+  1. RFC 2474 / RFC 3246 DSCP-to-TOS bit shifting and reverse bit masking math.
+  2. Protocol payload serialization, deserialization, and schema error handling.
+  3. Live loopback socket server ingestion, categorization, and latency timing.
+  4. UDP sequence gap packet loss accounting algorithm.
+  5. Controlled flood traffic throughput pacing.
+  6. Results analysis and comparison table generator.
+"""
 
 import os
 import sys
@@ -10,6 +20,7 @@ import unittest
 import threading
 from typing import Dict, Any, List
 
+# Ensure local directory is in Python module path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
@@ -34,39 +45,55 @@ from analyze_results import (
     print_comparison_table,
 )
 
+
 class TestProtocol(unittest.TestCase):
+    """
+    Validates protocol-level mathematical conversions and wire format encodings.
+    """
 
     def test_dscp_tos_conversions(self):
-
+        """
+        Tests bit-level equivalence: TOS = (DSCP << 2).
+        Verifies all 5 standard severity DiffServ values.
+        """
+        # CRITICAL -> EF (DSCP 46) -> 46 * 4 = 184 = 0xB8
         self.assertEqual(dscp_to_tos(46), 0xB8)
         self.assertEqual(tos_to_dscp(0xB8), 46)
         self.assertEqual(get_tos_for_severity("CRITICAL"), 0xB8)
 
+        # ERROR -> AF41 (DSCP 34) -> 34 * 4 = 136 = 0x88
         self.assertEqual(dscp_to_tos(34), 0x88)
         self.assertEqual(tos_to_dscp(0x88), 34)
         self.assertEqual(get_tos_for_severity("ERROR"), 0x88)
 
+        # WARNING -> AF31 (DSCP 26) -> 26 * 4 = 104 = 0x68
         self.assertEqual(dscp_to_tos(26), 0x68)
         self.assertEqual(tos_to_dscp(0x68), 26)
         self.assertEqual(get_tos_for_severity("WARNING"), 0x68)
 
+        # INFO -> AF11 (DSCP 10) -> 10 * 4 = 40 = 0x28
         self.assertEqual(dscp_to_tos(10), 0x28)
         self.assertEqual(tos_to_dscp(0x28), 10)
         self.assertEqual(get_tos_for_severity("INFO"), 0x28)
 
+        # DEBUG -> CS0 / Best Effort (DSCP 0) -> 0 * 4 = 0 = 0x00
         self.assertEqual(dscp_to_tos(0), 0x00)
         self.assertEqual(tos_to_dscp(0x00), 0)
         self.assertEqual(get_tos_for_severity("DEBUG"), 0x00)
 
     def test_invalid_dscp_raises_value_error(self):
-
+        """
+        Verifies that out-of-range DSCP integers (<0 or >63) raise ValueError.
+        """
         with self.assertRaises(ValueError):
             dscp_to_tos(64)
         with self.assertRaises(ValueError):
             dscp_to_tos(-1)
 
     def test_payload_creation_and_parsing(self):
-
+        """
+        Verifies round-trip JSON serialization and field integrity.
+        """
         test_msg = "Database replication latency high"
         now = time.time()
         raw = create_log_payload(
@@ -88,22 +115,33 @@ class TestProtocol(unittest.TestCase):
         self.assertAlmostEqual(parsed["send_time"], now, places=3)
 
     def test_malformed_payload_handling(self):
-
+        """
+        Ensures parser returns descriptive errors without raising uncaught exceptions.
+        """
+        # Test non-JSON string
         entry, err = parse_log_payload(b"Not valid JSON")
         self.assertIsNone(entry)
         self.assertIn("JSON parse error", err)
 
+        # Test incomplete JSON schema missing mandatory fields
         incomplete = json.dumps({"seq": 1, "host": "h1"}).encode("utf-8")
         entry, err = parse_log_payload(incomplete)
         self.assertIsNone(entry)
         self.assertIn("Missing required fields", err)
 
+
 class TestSocketIntegration(unittest.TestCase):
+    """
+    Integration tests running actual UDP server instances on local test ports.
+    """
 
     TEST_PORT = 15514
     TEST_DIR = os.path.join(SCRIPT_DIR, "test_output")
 
     def setUp(self):
+        """
+        Initializes fresh test output folder and launches background LogServer instance.
+        """
         if os.path.exists(self.TEST_DIR):
             shutil.rmtree(self.TEST_DIR)
         os.makedirs(self.TEST_DIR, exist_ok=True)
@@ -120,13 +158,18 @@ class TestSocketIntegration(unittest.TestCase):
         time.sleep(0.3)
 
     def tearDown(self):
+        """
+        Stops server and removes temporary test output files.
+        """
         self.server.stop()
         time.sleep(0.2)
         if os.path.exists(self.TEST_DIR):
             shutil.rmtree(self.TEST_DIR)
 
     def test_all_severities_categorization(self):
-
+        """
+        Streams 2 datagrams per severity tier and asserts exact server categorization and file export.
+        """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         dest = ("127.0.0.1", self.TEST_PORT)
 
@@ -154,6 +197,7 @@ class TestSocketIntegration(unittest.TestCase):
         sock.close()
         time.sleep(0.5)
 
+        # Assert in-memory data structures
         with self.server.lock:
             self.assertEqual(self.server.total_received, 10)
             self.assertEqual(self.server.total_lost, 0)
@@ -165,9 +209,11 @@ class TestSocketIntegration(unittest.TestCase):
                     f"Expected 2 logs for {sev}, got {actual_cnt}",
                 )
 
+        # Stop server to flush JSON export
         self.server.stop()
         time.sleep(0.3)
 
+        # Verify physical JSON files on disk
         for sev in SEVERITIES:
             json_file = os.path.join(self.TEST_DIR, f"logs_{sev.lower()}.json")
             self.assertTrue(os.path.isfile(json_file), f"Missing {json_file}")
@@ -184,7 +230,12 @@ class TestSocketIntegration(unittest.TestCase):
         self.assertEqual(summary["total_packets_lost"], 0)
 
     def test_packet_loss_detection(self):
-
+        """
+        Sends sequence numbers with intentional gaps [0, 1, 4, 6] to verify loss calculation:
+        Gap (1 -> 4) drops 2 and 3 (loss = 2)
+        Gap (4 -> 6) drops 5 (loss = 1)
+        Total expected loss = 3.
+        """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         dest = ("127.0.0.1", self.TEST_PORT)
 
@@ -210,7 +261,9 @@ class TestSocketIntegration(unittest.TestCase):
             self.assertEqual(self.server.total_lost, 3)
 
     def test_latency_measurement(self):
-
+        """
+        Verifies that one-way delivery transit latency is computed correctly.
+        """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         dest = ("127.0.0.1", self.TEST_PORT)
 
@@ -234,10 +287,16 @@ class TestSocketIntegration(unittest.TestCase):
             self.assertGreaterEqual(entry["delivery_latency_ms"], 0.0)
             self.assertLess(entry["delivery_latency_ms"], 1000.0)
 
+
 class TestTrafficFlooder(unittest.TestCase):
+    """
+    Validates the controlled UDP cross-traffic flooder.
+    """
 
     def test_flood_rate_and_packet_transmission(self):
-
+        """
+        Verifies that run_flood transmits sized datagrams at designated rate.
+        """
         target_port = 19999
         recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         recv_sock.bind(("127.0.0.1", target_port))
@@ -258,6 +317,7 @@ class TestTrafficFlooder(unittest.TestCase):
         t = threading.Thread(target=receiver, daemon=True)
         t.start()
 
+        # Run 1-second burst at 1 Mbps with 1000-byte packets
         run_flood(
             target_ip="127.0.0.1",
             target_port=target_port,
@@ -271,22 +331,31 @@ class TestTrafficFlooder(unittest.TestCase):
         recv_sock.close()
         t.join(timeout=1.0)
 
+        # Assert packets were successfully generated and received
         self.assertGreater(len(pkts_received), 10)
         self.assertEqual(pkts_received[0], 1000)
 
+
 class TestAnalysisModule(unittest.TestCase):
+    """
+    Tests evaluation metric loading, synthetic benchmark generation, and report export.
+    """
 
     def test_benchmark_generation_and_reporting(self):
-
+        """
+        Verifies synthetic benchmark structure and ensures comparison tables generate without errors.
+        """
         baseline, qos = generate_synthetic_benchmark()
         self.assertIn("CRITICAL", baseline["severity_metrics"])
         self.assertIn("CRITICAL", qos["severity_metrics"])
 
+        # Verify QoS delivers lower loss rate than baseline for CRITICAL
         self.assertLess(
             qos["severity_metrics"]["CRITICAL"]["loss_rate"],
             baseline["severity_metrics"]["CRITICAL"]["loss_rate"],
         )
 
+        # Test output report file generation
         report_file = os.path.join(SCRIPT_DIR, "test_comparison_report.txt")
         try:
             print_comparison_table(baseline, qos, output_report_file=report_file)
@@ -305,6 +374,7 @@ class TestAnalysisModule(unittest.TestCase):
                 os.remove(report_file)
             if os.path.isfile(os.path.join(SCRIPT_DIR, "comparison_report.csv")):
                 os.remove(os.path.join(SCRIPT_DIR, "comparison_report.csv"))
+
 
 if __name__ == "__main__":
     print("==================================================================")

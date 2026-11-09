@@ -10,3 +10,4 @@ comparison_report.csv
 
 *.log
 *.pid
+graphify-out/
