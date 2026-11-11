@@ -14,6 +14,7 @@ Topology:
 
 import os
 import sys
+import shutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -28,6 +29,7 @@ except ImportError:
 
 S1_CONFIG = [
     "hostname s1",
+    "spanning-tree mode rapid-pvst",
     "interface FastEthernet0/1",
     " description Host h1 (Web Microservice - 10.0.0.1)",
     " switchport mode access",
@@ -48,6 +50,7 @@ S1_CONFIG = [
 
 S2_CONFIG = [
     "hostname s2",
+    "spanning-tree mode rapid-pvst",
     "interface FastEthernet0/1",
     " description Host h2 (Database Microservice - 10.0.0.2)",
     " switchport mode access",
@@ -93,6 +96,7 @@ S2_CONFIG = [
 
 S3_CONFIG = [
     "hostname s3",
+    "spanning-tree mode rapid-pvst",
     "interface FastEthernet0/1",
     " description Host h3 (Auth Microservice - 10.0.0.3)",
     " switchport mode access",
@@ -107,6 +111,7 @@ S3_CONFIG = [
 
 S4_CONFIG = [
     "hostname s4",
+    "spanning-tree mode rapid-pvst",
     "interface FastEthernet0/1",
     " description Destination Link to h4 (Central Log Server - 10.0.0.4)",
     " switchport mode access",
@@ -143,30 +148,32 @@ def sync_startup_configs(lab: Lab) -> None:
 
 def build_topology(output_file: str, core_switch_model: str = "2960-24TT") -> None:
     """
-    Builds the complete Chronos Packet Tracer topology and saves to output_file.
+    Builds the complete Chronos Packet Tracer topology with compact viewport coordinates
+    and saves to output_file.
     """
     lab = Lab()
     lab.prune_seed_devices()
 
-    # 1. Add Switches
-    s1 = lab.add_device("2960-24TT", "s1", x=300, y=320, ios_config=S1_CONFIG)
-    s2 = lab.add_device(core_switch_model, "s2", x=550, y=320, ios_config=S2_CONFIG)
-    s3 = lab.add_device("2960-24TT", "s3", x=550, y=540, ios_config=S3_CONFIG)
-    s4 = lab.add_device("2960-24TT", "s4", x=800, y=320, ios_config=S4_CONFIG)
+    # 1. Add Switches (Horizontally aligned with symmetrical branches)
+    s1 = lab.add_device("2960-24TT", "s1", x=290, y=255, ios_config=S1_CONFIG)
+    s2 = lab.add_device(core_switch_model, "s2", x=450, y=255, ios_config=S2_CONFIG)
+    s3 = lab.add_device("2960-24TT", "s3", x=450, y=380, ios_config=S3_CONFIG)
+    s4 = lab.add_device("2960-24TT", "s4", x=630, y=255, ios_config=S4_CONFIG)
 
     # 2. Add End Hosts
-    # h1: Web Server (10.0.0.1)
-    h1 = lab.add_device("PC-PT", "h1", x=130, y=200, pc_ip=["10.0.0.1", "255.255.255.0", "10.0.0.254"])
-    # h5: Background Traffic Flooder (10.0.0.5)
-    h5 = lab.add_device("PC-PT", "h5", x=130, y=440, pc_ip=["10.0.0.5", "255.255.255.0", "10.0.0.254"])
-    # h2: Database Server (10.0.0.2)
-    h2 = lab.add_device("PC-PT", "h2", x=550, y=140, pc_ip=["10.0.0.2", "255.255.255.0", "10.0.0.254"])
-    # c0: Controller Node / SDN Interface (10.0.0.100)
-    c0 = lab.add_device("Server-PT", "c0", x=360, y=140, pc_ip=["10.0.0.100", "255.255.255.0", "10.0.0.254"])
-    # h3: Auth Server (10.0.0.3)
-    h3 = lab.add_device("PC-PT", "h3", x=550, y=700, pc_ip=["10.0.0.3", "255.255.255.0", "10.0.0.254"])
-    # h4: Central Log Server (10.0.0.4)
-    h4 = lab.add_device("Server-PT", "h4", x=1020, y=320, pc_ip=["10.0.0.4", "255.255.255.0", "10.0.0.254"])
+    # Left Branch: h1 (Web Server 10.0.0.1) and h5 (Flooder 10.0.0.5)
+    h1 = lab.add_device("PC-PT", "h1", x=160, y=190, pc_ip=["10.0.0.1", "255.255.255.0", "10.0.0.254"])
+    h5 = lab.add_device("PC-PT", "h5", x=160, y=320, pc_ip=["10.0.0.5", "255.255.255.0", "10.0.0.254"])
+
+    # Center-Top: c0 (SDN Controller 10.0.0.100) and h2 (Database Server 10.0.0.2)
+    c0 = lab.add_device("Server-PT", "c0", x=370, y=130, pc_ip=["10.0.0.100", "255.255.255.0", "10.0.0.254"])
+    h2 = lab.add_device("PC-PT", "h2", x=510, y=130, pc_ip=["10.0.0.2", "255.255.255.0", "10.0.0.254"])
+
+    # Center-Bottom: h3 (Auth Server 10.0.0.3)
+    h3 = lab.add_device("PC-PT", "h3", x=450, y=490, pc_ip=["10.0.0.3", "255.255.255.0", "10.0.0.254"])
+
+    # Right Branch: h4 (Central Log Aggregation Server 10.0.0.4)
+    h4 = lab.add_device("Server-PT", "h4", x=770, y=255, pc_ip=["10.0.0.4", "255.255.255.0", "10.0.0.254"])
 
     # 3. Add Copper Straight-Through Cables (Hosts -> Switches)
     lab.link(h1, "FastEthernet0", s1, "FastEthernet0/1")
@@ -207,7 +214,6 @@ def main():
     # 3. Copy standard edition to project root
     root_dir = base_dir.parent
     root_pkt = root_dir / "chronos_topology.pkt"
-    import shutil
     shutil.copy2(pkt_std, root_pkt)
     print(f"[OK] Copied {pkt_std.name} to {root_pkt}")
 
@@ -217,6 +223,12 @@ def main():
         parent_pkt = parent_notes_dir / "chronos_topology.pkt"
         shutil.copy2(pkt_std, parent_pkt)
         print(f"[OK] Copied {pkt_std.name} to {parent_pkt}")
+        # Also copy directory
+        dest_dir = parent_notes_dir / "cisco_packet_tracer"
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        shutil.copytree(base_dir, dest_dir)
+        print(f"[OK] Synchronized cisco_packet_tracer directory to {dest_dir}")
 
 
 if __name__ == "__main__":

@@ -8,8 +8,9 @@
 enable
 configure terminal
 
-! 1. Hostname Identification
+! 1. Hostname Identification and Rapid STP
 hostname s2
+spanning-tree mode rapid-pvst
 
 ! 2. Ingress Access Port 1: Microservice h2 (Database Server - 10.0.0.2)
 interface FastEthernet0/1

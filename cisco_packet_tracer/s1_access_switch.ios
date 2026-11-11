@@ -8,8 +8,9 @@
 enable
 configure terminal
 
-! 1. Hostname Identification
+! 1. Hostname Identification and Rapid STP
 hostname s1
+spanning-tree mode rapid-pvst
 
 ! 2. Ingress Access Port 1: Microservice h1 (Web Server - 10.0.0.1)
 interface FastEthernet0/1
