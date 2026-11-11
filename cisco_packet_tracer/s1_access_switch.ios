@@ -1,0 +1,40 @@
+! ==============================================================================
+! Chronos Distributed Log Aggregation System
+! Switch s1 Configuration - Access Switch for Microservices h1 and h5
+! Hardware Platform: Cisco Catalyst 2960-24TT (or 3560-24PS)
+! Role: Ingress access switch providing Layer-2 port isolation and 802.1Q trunking.
+! ==============================================================================
+
+enable
+configure terminal
+
+! 1. Hostname Identification
+hostname s1
+
+! 2. Ingress Access Port 1: Microservice h1 (Web Server - 10.0.0.1)
+interface FastEthernet0/1
+ description Host h1 (Web Microservice - 10.0.0.1/24)
+ switchport mode access
+ switchport access vlan 1
+ spanning-tree portfast
+ no shutdown
+exit
+
+! 3. Ingress Access Port 2: Host h5 (Background Traffic Flooder - 10.0.0.5)
+interface FastEthernet0/2
+ description Host h5 (Traffic Flooder - 10.0.0.5/24)
+ switchport mode access
+ switchport access vlan 1
+ spanning-tree portfast
+ no shutdown
+exit
+
+! 4. Uplink Backbone Trunk Port: Link to Core Switch s2
+interface GigabitEthernet0/1
+ description Backbone Trunk Link to s2 (Core Switch)
+ switchport mode trunk
+ no shutdown
+exit
+
+end
+write memory

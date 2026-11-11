@@ -1,0 +1,90 @@
+! ==============================================================================
+! Chronos Distributed Log Aggregation System
+! Switch s2 Configuration - Core Bottleneck & QoS Scheduling Switch
+! Hardware Platform: Cisco Catalyst 2960-24TT or Catalyst 3560-24PS Core Switch
+! Role: Backbone aggregation, SDN controller interface, and DSCP-aware queuing.
+! ==============================================================================
+
+enable
+configure terminal
+
+! 1. Hostname Identification
+hostname s2
+
+! 2. Ingress Access Port 1: Microservice h2 (Database Server - 10.0.0.2)
+interface FastEthernet0/1
+ description Host h2 (Database Microservice - 10.0.0.2/24)
+ switchport mode access
+ switchport access vlan 1
+ spanning-tree portfast
+ no shutdown
+exit
+
+! 3. Management Access Port 23: SDN Controller Interface c0 (10.0.0.100)
+interface FastEthernet0/23
+ description SDN Controller Out-of-Band Management (c0 - 10.0.0.100/24)
+ switchport mode access
+ switchport access vlan 1
+ spanning-tree portfast
+ no shutdown
+exit
+
+! 4. Backbone Ingress Trunk Port: Link from Access Switch s1
+interface GigabitEthernet0/1
+ description Backbone Trunk Link from s1 (Access Switch A)
+ switchport mode trunk
+ no shutdown
+exit
+
+! 5. Backbone Ingress Trunk Port: Link from Access Switch s3
+interface GigabitEthernet0/2
+ description Backbone Trunk Link from s3 (Access Switch B)
+ switchport mode trunk
+ no shutdown
+exit
+
+! 6. Access Control Lists: DSCP Classification Rules
+! ACL 100: Matches Critical and High Priority Log Packets
+! DSCP EF   = 46 (0x2E, TOS 184): Critical / Emergency application logs
+! DSCP AF41 = 34 (0x22, TOS 136): High priority security audit logs
+access-list 100 permit ip any any dscp ef
+access-list 100 permit ip any any dscp af41
+
+! ACL 101: Matches Best Effort and Bulk Traffic
+! DSCP default = 0  (0x00, TOS 0): Standard unclassified traffic / 5 Mbps flood
+! DSCP AF11    = 10 (0x0A, TOS 40): Low priority debug trace logs
+! DSCP AF31    = 26 (0x1A, TOS 104): Medium priority operational telemetry
+access-list 101 permit ip any any dscp default
+access-list 101 permit ip any any dscp af11
+access-list 101 permit ip any any dscp af31
+
+! 7. Cisco Modular QoS CLI (MQC) Class Maps
+class-map match-all CM_CRITICAL_LOGS
+ match access-group 100
+exit
+
+class-map match-all CM_BESTEFFORT_LOGS
+ match access-group 101
+exit
+
+! 8. Cisco Modular QoS CLI (MQC) Policy Map
+! Allocates strict priority scheduling to critical logs and fair share to best-effort
+policy-map PM_CHRONOS_SDN_QOS
+ class CM_CRITICAL_LOGS
+  priority 800
+ class CM_BESTEFFORT_LOGS
+  bandwidth 200
+exit
+
+! 9. BOTTLENECK EGRESS TRUNK: Link to Switch s4 (Capped at 10 Mbps)
+interface FastEthernet0/24
+ description BOTTLENECK EGRESS LINK to s4 (Aggregator Switch) - Capped to 10 Mbps
+ switchport mode trunk
+ speed 10
+ duplex full
+ service-policy output PM_CHRONOS_SDN_QOS
+ no shutdown
+exit
+
+end
+write memory

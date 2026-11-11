@@ -1,0 +1,33 @@
+! ==============================================================================
+! Chronos Distributed Log Aggregation System
+! Switch s4 Configuration - Destination Switch for Log Aggregation Server h4
+! Hardware Platform: Cisco Catalyst 2960-24TT (or 3560-24PS)
+! Role: Egress delivery switch connecting the bottleneck trunk to Server h4.
+! ==============================================================================
+
+enable
+configure terminal
+
+! 1. Hostname Identification
+hostname s4
+
+! 2. Destination Access Port 1: Centralized Log Aggregation Server h4 (10.0.0.4)
+interface FastEthernet0/1
+ description Destination Link to h4 (Central Log Server - 10.0.0.4/24)
+ switchport mode access
+ switchport access vlan 1
+ spanning-tree portfast
+ no shutdown
+exit
+
+! 3. Ingress Bottleneck Trunk Port: Link from Core Switch s2
+interface FastEthernet0/24
+ description BOTTLENECK INGRESS LINK from s2 (Core Switch) - Capped to 10 Mbps
+ switchport mode trunk
+ speed 10
+ duplex full
+ no shutdown
+exit
+
+end
+write memory

@@ -1,0 +1,31 @@
+! ==============================================================================
+! Chronos Distributed Log Aggregation System
+! Switch s3 Configuration - Access Switch for Microservice h3
+! Hardware Platform: Cisco Catalyst 2960-24TT (or 3560-24PS)
+! Role: Ingress access switch for authentication microservice.
+! ==============================================================================
+
+enable
+configure terminal
+
+! 1. Hostname Identification
+hostname s3
+
+! 2. Ingress Access Port 1: Microservice h3 (Auth Server - 10.0.0.3)
+interface FastEthernet0/1
+ description Host h3 (Auth Microservice - 10.0.0.3/24)
+ switchport mode access
+ switchport access vlan 1
+ spanning-tree portfast
+ no shutdown
+exit
+
+! 3. Uplink Backbone Trunk Port: Link to Core Switch s2
+interface GigabitEthernet0/1
+ description Backbone Trunk Link to s2 (Core Switch)
+ switchport mode trunk
+ no shutdown
+exit
+
+end
+write memory
