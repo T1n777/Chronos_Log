@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-Chronos Distributed Log Aggregator & SDN Prioritization System
-Main Executable Orchestrator:
-Runs a complete 5-phase end-to-end demonstration showcasing:
-  Phase 1: Multi-threaded Centralized UDP Log Server Initialization.
-  Phase 2: Microservice Clients Streaming Log Datagrams with Kernel IPv4 TOS Marking.
-  Phase 3: Network Congestion Simulation across a 1.0 Mbps Bottleneck Link (Buffer Tail-Drop).
-  Phase 4: Dynamic Ryu SDN Controller Activation & OpenFlow 1.3 Hardware Queue Rule Installation.
-  Phase 5: Final Quantitative Performance Evaluation Matrix & JSON Artifact Export.
-"""
 
 import os
 import sys
@@ -19,7 +9,6 @@ import threading
 import argparse
 from typing import Dict, List, Any
 
-# Ensure local repository root is in Python module search path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
@@ -33,11 +22,7 @@ from protocol import (
     DEFAULT_SERVER_PORT,
 )
 
-
 class Colors:
-    """
-    ANSI terminal escape sequences for structured, high-contrast terminal styling.
-    """
     RESET = "\033[0m"
     BOLD = "\033[1m"
     DIM = "\033[2m"
@@ -51,11 +36,7 @@ class Colors:
     BG_RED = "\033[41m"
     BG_GREEN = "\033[42m"
 
-
 def color_sev(sev: str) -> str:
-    """
-    Returns an ANSI-color-coded formatted badge for each severity level.
-    """
     s = sev.upper()
     if s == "CRITICAL":
         return f"{Colors.BOLD}{Colors.RED}[CRITICAL]{Colors.RESET}"
@@ -68,11 +49,7 @@ def color_sev(sev: str) -> str:
     else:
         return f"{Colors.DIM}[DEBUG]   {Colors.RESET}"
 
-
 def print_banner():
-    """
-    Displays the top-level architectural banner detailing network and transport parameters.
-    """
     banner = f"""
 {Colors.BOLD}{Colors.CYAN}================================================================================
  CHRONOS LOG: DISTRIBUTED LOG AGGREGATION & SDN PRIORITIZATION
@@ -85,26 +62,15 @@ def print_banner():
 """
     print(banner)
 
-
 def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
-    """
-    Master 5-Phase simulation orchestrator.
-    """
-    # Create target directory for experimental reports
     os.makedirs(output_dir, exist_ok=True)
     print_banner()
 
-    # --------------------------------------------------------------------------
-    # PHASE 1: Centralized UDP Log Server Initialization
-    # --------------------------------------------------------------------------
     print(f"{Colors.BOLD}[1/5] Starting Centralized UDP Log Server on 127.0.0.1:{port}...{Colors.RESET}")
-    
-    # Create IPv4 UDP socket and enable address reuse to allow immediate restart
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_sock.bind(("127.0.0.1", port))
 
-    # Shared thread-safe storage structures for incoming telemetry
     categorized_logs: Dict[str, List[Dict[str, Any]]] = {s: [] for s in SEVERITIES}
     host_stats: Dict[str, Dict[str, int]] = {}
     total_received = 0
@@ -112,25 +78,17 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     lock = threading.Lock()
 
     def server_thread_func():
-        """
-        Background listener thread: ingests UDP datagrams, extracts payload,
-        calculates transit latency, and tracks monotonic sequence gaps.
-        """
         nonlocal total_received
         server_sock.settimeout(0.3)
         while server_running:
             try:
-                # Receive datagram buffer up to 64 KB
                 data, addr = server_sock.recvfrom(65535)
                 recv_time = time.time()
-                # Parse wire format payload
                 entry, err = parse_log_payload(data)
                 if entry:
                     entry["receive_time"] = recv_time
-                    # Calculate one-way transit delay
                     entry["lat_ms"] = (recv_time - entry.get("send_time", recv_time)) * 1000.0
 
-                    # Safely record entry into shared data structures
                     with lock:
                         sev = entry.get("severity", "DEBUG")
                         if sev in categorized_logs:
@@ -140,7 +98,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
                             host_stats[host] = {"received": 0, "expected_seq": 1, "lost": 0}
                         seq = entry.get("seq", 0)
                         exp = host_stats[host]["expected_seq"]
-                        # Detect dropped datagrams via sequence gap
                         if seq > exp:
                             host_stats[host]["lost"] += (seq - exp)
                         host_stats[host]["expected_seq"] = seq + 1
@@ -151,20 +108,15 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
             except OSError:
                 break
 
-    # Spawn and launch server thread
     srv_thread = threading.Thread(target=server_thread_func, daemon=True)
     srv_thread.start()
     time.sleep(0.3)
     print(f"      {Colors.GREEN}[OK] Central Server active and listening on port {port}.{Colors.RESET}\n")
 
-    # --------------------------------------------------------------------------
-    # PHASE 2: Microservice Clients Streaming Logs with IPv4 TOS Marking
-    # --------------------------------------------------------------------------
     print(f"{Colors.BOLD}[2/5] Microservice Clients Streaming Logs with IPv4 TOS Tagging...{Colors.RESET}")
     print(f"      {'Source':<18} {'Seq':<5} {'TOS':<6} {'Severity':<18} {'Message':<38} {'Transit Latency'}")
     print("      " + "-" * 95)
 
-    # Simulated microservice log stream workload
     sample_logs = [
         ("auth-gateway",      1, "INFO",     "User session token refreshed for uid=1042"),
         ("order-processor",   1, "DEBUG",    "Cache query hit for product_sku=9914"),
@@ -180,11 +132,9 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
         ("analytics-worker",  3, "DEBUG",    "Periodic telemetry flush completed"),
     ]
 
-    # Client socket dispatching tagged datagrams
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for host, seq, sev, msg in sample_logs:
         tos = SEVERITY_TOS[sev]
-        # Apply IPv4 TOS socket option to tag packets in kernel IP header
         try:
             client_sock.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, tos)
         except OSError:
@@ -193,7 +143,7 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
         payload = create_log_payload(seq=seq, severity=sev, host=host, message=msg)
         send_t = time.time()
         client_sock.sendto(payload, ("127.0.0.1", port))
-        time.sleep(0.08)  # Short inter-packet interval for display clarity
+        time.sleep(0.08)
         lat = (time.time() - send_t) * 1000.0
 
         print(f"      {host:<18} #{seq:<4} 0x{tos:02X}  {color_sev(sev):<28} {msg:<38} {lat:.2f} ms")
@@ -202,16 +152,12 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print("      " + "-" * 95)
     print(f"      {Colors.GREEN}[OK] Initial 12 microservice logs ingested and classified successfully.{Colors.RESET}\n")
 
-    # --------------------------------------------------------------------------
-    # PHASE 3: Network Congestion Simulation (FIFO Tail-Drop Behavior)
-    # --------------------------------------------------------------------------
     print(f"{Colors.BOLD}[3/5] Injecting Traffic Congestion Across 1.0 Mbps Bottleneck Link...{Colors.RESET}")
     print(f"      Host h5 injects 5.0 Mbps background UDP flood toward aggregation server.")
     print(f"      Link utilization hits 100%. Traditional FIFO buffer overflows (50/50 packets).")
     print(f"      {Colors.RED}[!] Baseline Behavior (No QoS): Dumb switches drop packets uniformly across all classes.{Colors.RESET}")
     time.sleep(0.5)
 
-    # In a legacy FIFO network, drops occur uniformly regardless of packet criticality
     baseline_drops = [
         ("CRITICAL", "Primary database replica offline", True),
         ("DEBUG",    "Cache key lookup expired",          True),
@@ -229,9 +175,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print("      " + "-" * 75)
     print(f"      {Colors.RED}Result without QoS: 2 out of 3 CRITICAL alarms were discarded by the switch!{Colors.RESET}\n")
 
-    # --------------------------------------------------------------------------
-    # PHASE 4: Ryu SDN Controller Dynamic OpenFlow 1.3 QoS Activation
-    # --------------------------------------------------------------------------
     print(f"{Colors.BOLD}[4/5] Activating Ryu SDN Controller & Dynamic OpenFlow 1.3 QoS...{Colors.RESET}")
     time.sleep(0.3)
     print(f"      {Colors.YELLOW}[SDN CONTROLLER] FlowStatsReply: Bottleneck link throughput = 984.2 Kbps! (>650 Kbps Threshold){Colors.RESET}")
@@ -243,8 +186,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
 
     print(f"\n      {Colors.BOLD}Processing stream under SDN Dynamic Priority Queuing:{Colors.RESET}")
     print("      " + "-" * 88)
-    
-    # Under SDN QoS, high-priority queues are protected; drops are absorbed by low-priority tiers
     qos_stream = [
         ("CRITICAL", "Primary database replica offline", "Queue 1 (Priority)",   False, 8.2),
         ("DEBUG",    "Cache key lookup expired",          "Queue 0 (Best Effort)", True,  0.0),
@@ -267,9 +208,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print("      " + "-" * 88)
     print(f"      {Colors.GREEN}[SUCCESS] Under SDN QoS: 100% of CRITICAL and ERROR logs delivered with <10ms latency!{Colors.RESET}\n")
 
-    # --------------------------------------------------------------------------
-    # PHASE 5: Quantitative Comparison Matrix & Artifact Export
-    # --------------------------------------------------------------------------
     print(f"{Colors.BOLD}[5/5] Final Quantitative Performance Matrix & Artifact Export...{Colors.RESET}")
 
     matrix_header = """
@@ -285,7 +223,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
 """
     print(matrix_header)
 
-    # Persist summary metrics to server_summary.json
     summary_path = os.path.join(output_dir, "server_summary.json")
     summary_data = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -303,7 +240,6 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary_data, f, indent=2)
 
-    # Persist individual partitioned severity log files
     for sev in SEVERITIES:
         fpath = os.path.join(output_dir, f"logs_{sev.lower()}.json")
         with open(fpath, "w", encoding="utf-8") as f:
@@ -315,23 +251,17 @@ def run_system(port: int = DEFAULT_SERVER_PORT, output_dir: str = "results"):
     print(f"{Colors.BOLD}{Colors.GREEN} SYSTEM EXECUTION COMPLETED SUCCESSFULLY{Colors.RESET}")
     print(f"{Colors.BOLD}{Colors.CYAN}================================================================================{Colors.RESET}\n")
 
-    # Stop server thread and close socket
     server_running = False
     server_sock.close()
     srv_thread.join(timeout=1.0)
 
-
 def main():
-    """
-    Entrypoint: parses command-line flags and executes run_system.
-    """
     parser = argparse.ArgumentParser(description="Chronos Distributed Log Aggregator Main Executable")
     parser.add_argument("--port", type=int, default=DEFAULT_SERVER_PORT, help=f"Server UDP port (default: {DEFAULT_SERVER_PORT})")
     parser.add_argument("--output-dir", type=str, default="results", help="Directory for JSON results (default: results)")
     args = parser.parse_args()
 
     run_system(port=args.port, output_dir=args.output_dir)
-
 
 if __name__ == "__main__":
     main()

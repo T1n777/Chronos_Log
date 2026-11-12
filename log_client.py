@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Chronos Distributed Log Generator & UDP Client
-Simulates distributed microservice hosts (h1, h2, h3) streaming log messages
-tagged with IPv4 Type of Service (TOS) octets via socket.setsockopt(IPPROTO_IP, IP_TOS).
-"""
 
 import socket
 import sys
@@ -18,7 +13,6 @@ from protocol import (
     create_log_payload,
 )
 
-# Realistic enterprise log messages partitioned across all 5 severity levels
 SAMPLE_LOG_MESSAGES: Dict[str, List[str]] = {
     "DEBUG": [
         "Memory cache hit ratio: 0.942 on key user_session_4920",
@@ -62,39 +56,27 @@ SAMPLE_LOG_MESSAGES: Dict[str, List[str]] = {
     ],
 }
 
-# Empirical traffic distribution: Routine logs are frequent, critical alarms are rare
 SEVERITY_WEIGHTS: Dict[str, int] = {
-    "DEBUG": 35,      # 35% routine debug traces
-    "INFO": 35,       # 35% normal informational messages
-    "WARNING": 15,    # 15% warning events
-    "ERROR": 10,      # 10% operational errors
-    "CRITICAL": 5,    # 5% severe system outages
+    "DEBUG": 35,
+    "INFO": 35,
+    "WARNING": 15,
+    "ERROR": 10,
+    "CRITICAL": 5,
 }
 
-
 def pick_severity_and_message(selected_severity: str) -> Tuple[str, str]:
-    """
-    Selects a severity and associated realistic log message.
-    If mode is 'mixed', samples probabilistically using SEVERITY_WEIGHTS.
-    Otherwise, uses the explicitly requested severity string.
-    """
-    # Check if user requested a specific severity or mixed distribution
+
     if selected_severity != "mixed":
         sev = selected_severity.upper()
-        # Fallback to INFO if invalid severity passed
         if sev not in SAMPLE_LOG_MESSAGES:
             sev = "INFO"
     else:
-        # Extract severity names and their configured probability weights
         severities = list(SEVERITY_WEIGHTS.keys())
         weights = list(SEVERITY_WEIGHTS.values())
-        # Sample one severity using weighted random choice
         sev = random.choices(severities, weights=weights, k=1)[0]
 
-    # Pick a random sample log description corresponding to selected severity
     msg = random.choice(SAMPLE_LOG_MESSAGES[sev])
     return sev, msg
-
 
 def run_client(
     server_ip: str,
@@ -105,25 +87,14 @@ def run_client(
     severity_mode: str,
     quiet: bool = False,
 ) -> None:
-    """
-    Main client transmission loop:
-    1. Creates an AF_INET SOCK_DGRAM UDP socket.
-    2. Iterates, picking messages, serializing to JSON.
-    3. Sets the IPv4 TOS field via setsockopt for each packet based on severity.
-    4. Transmits datagram to destination (server_ip, server_port).
-    5. Tracks packet counts and rates for summary statistics.
-    """
-    # Allocate a standard UDP datagram socket (IPv4, UDP)
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Define remote target server endpoint address tuple
     dest_addr = (server_ip, server_port)
 
-    # Initialize per-severity transmission counters
     sent_counts: Dict[str, int] = {sev: 0 for sev in SEVERITIES}
     total_sent = 0
-    seq = 0  # Monotonically increasing sequence number
+    seq = 0
 
-    # Output startup banner with configuration parameters
     print("=" * 65)
     print(" Chronos UDP Log Client")
     print("=" * 65)
@@ -138,10 +109,7 @@ def run_client(
 
     try:
         while True:
-            # Generate next severity and message text
             sev, msg = pick_severity_and_message(severity_mode)
-
-            # Build standardized protocol JSON payload
             payload = create_log_payload(
                 seq=seq,
                 severity=sev,
@@ -149,49 +117,36 @@ def run_client(
                 message=msg,
             )
 
-            # Retrieve precomputed 8-bit TOS byte (DSCP << 2)
             tos_val = SEVERITY_TOS.get(sev, 0)
 
-            # Apply TOS value to socket IP header for kernel packet tagging
             try:
                 sock.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, tos_val)
             except OSError as err:
-                # Handle platforms or sandboxes restricting raw TOS modification
+
                 if seq == 0:
                     print(f"[WARN] Failed to set IP_TOS ({err}). Proceeding with default TOS.", file=sys.stderr)
 
-            # Transmit datagram across the network to destination server
             sock.sendto(payload, dest_addr)
 
-            # Update accounting statistics
             sent_counts[sev] += 1
             total_sent += 1
 
-            # Print per-packet live feedback unless quiet flag is specified
             if not quiet:
                 print(f"[{sev:<8}] seq={seq:<5} TOS=0x{tos_val:02X} -> {msg}")
 
-            # Advance sequence counter
             seq += 1
-
-            # Terminate if fixed count was requested and satisfied
             if count > 0 and total_sent >= count:
                 break
 
-            # Rate limiting delay between successive transmissions
             if rate > 0:
                 time.sleep(rate)
 
     except KeyboardInterrupt:
-        # Gracefully handle Ctrl+C user interruption
         print("\n[INFO] Transmission stopped by user (Ctrl+C).")
-
     finally:
-        # Compute transmission duration and close socket
         elapsed = max(time.time() - start_time, 0.001)
         sock.close()
 
-        # Display final transmission summary breakdown
         print("\n" + "=" * 65)
         print(" Transmission Summary")
         print("=" * 65)
@@ -207,55 +162,44 @@ def run_client(
             print(f" {s:<12} {c:<10} {pct:>6.1f}%")
         print("=" * 65)
 
-
 def parse_args():
-    """
-    Parses command-line arguments for client execution.
-    """
     parser = argparse.ArgumentParser(
         description="UDP Log Client with DSCP/TOS priority tagging for SDN."
     )
-    # Required target server IP address
     parser.add_argument(
         "--server-ip",
         required=True,
         help="IP address of the centralized log server (e.g., 10.0.0.4 or 127.0.0.1)",
     )
-    # Target server UDP port
     parser.add_argument(
         "--server-port",
         type=int,
         default=DEFAULT_SERVER_PORT,
         help=f"UDP port of the log server (default: {DEFAULT_SERVER_PORT})",
     )
-    # Host identification name
     parser.add_argument(
         "--hostname",
         default=socket.gethostname(),
         help="Identifier of this client host (default: system hostname)",
     )
-    # Interval delay between packets
     parser.add_argument(
         "--rate",
         type=float,
         default=0.1,
         help="Delay between outgoing log messages in seconds (default: 0.1s)",
     )
-    # Total count of packets to transmit (0 = continuous)
     parser.add_argument(
         "--count",
         type=int,
         default=0,
         help="Number of messages to transmit. 0 means continuous (default: 0)",
     )
-    # Severity selection mode
     parser.add_argument(
         "--severity",
         choices=["mixed", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default="mixed",
         help="Severity generation mode (default: mixed)",
     )
-    # Quiet flag to suppress per-packet terminal output
     parser.add_argument(
         "--quiet",
         action="store_true",
@@ -263,9 +207,7 @@ def parse_args():
     )
     return parser.parse_args()
 
-
 if __name__ == "__main__":
-    # Parse CLI flags and start client transmission
     args = parse_args()
     run_client(
         server_ip=args.server_ip,
